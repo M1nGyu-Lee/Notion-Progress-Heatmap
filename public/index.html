@@ -22,18 +22,18 @@
             color: #a0a0a0 !important;
             font-size: 11px;
         }
-        /* ⭐ [오직 빈 칸만] 너무 어둡지 않은 세련된 밝은 회색(#383838) 지정 */
-        .cal-heatmap-container rect.q0,
-        .cal-heatmap-container rect[fill="#202020"],
-        .cal-heatmap-container rect[fill="#252525"],
-        .cal-heatmap-container rect[fill="#ebedf0"],
-        .cal-heatmap-container rect[fill="#ededed"] {
+        /* ⭐ 1. [과거/현재/미래 포함] 모든 칸의 기본값을 무조건 밝은 회색(#383838)으로 지정 */
+        .cal-heatmap-container rect,
+        .cal-heatmap-container .graph-rect {
             fill: #383838 !important;
-            stroke: #191919 !important;
+            stroke: #191919 !important; /* 노션 검정 배경과 깨끗한 경계선 */
         }
-        /* ⭐ [작성한 날짜 연녹색 보장] 연녹색 칸은 절대 덮어씌워지지 않도록 지킴 */
+        /* ⭐ 2. [진짜 일지 쓴 날만] 연녹색(#84c688)으로 선명하게 표시 */
         .cal-heatmap-container rect.q1,
-        .cal-heatmap-container rect[fill="#84c688"] {
+        .cal-heatmap-container rect.q2,
+        .cal-heatmap-container rect.q3,
+        .cal-heatmap-container rect.q4,
+        .cal-heatmap-container rect.q5 {
             fill: #84c688 !important;
         }
     </style>
@@ -56,12 +56,12 @@
                 cellPadding: 3,
                 range: 6,
                 tooltip: true,
-                considerMissingDataAsZero: true,
+                considerMissingDataAsZero: false, // ⭐ 빈 날짜에 0을 부여해 엉뚱하게 칠해지는 문제 방지
                 legend: [1],
                 legendColors: {
-                    min: "#383838", // 빈 칸 색상
+                    min: "#383838",
                     base: "#383838",
-                    colors: ["#84c688"], // 작성한 날 연녹색
+                    colors: ["#84c688"],
                     empty: "#383838"
                 },
                 subDomainTitleFormat: {

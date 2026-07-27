@@ -13,14 +13,22 @@
             flex-direction: column;
             align-items: center;
             background-color: #191919; /* 노션 다크모드 검정 배경 */
-            color: #787878; /* 텍스트도 눈이 더 편한 은은한 회색 */
+            color: #787878;
         }
-        /* 캘린더 월/일 라벨 텍스트 */
+        /* 캘린더 월/일 라벨 텍스트 색상 */
         .cal-heatmap-container .graph-label, 
         .cal-heatmap-container text {
             fill: #787878 !important;
             color: #787878 !important;
             font-size: 11px;
+        }
+        /* ⭐ [핵심] 라이브러리의 하얀색 빈 격자를 다크모드 회색(#202020)으로 강제 덮어쓰기 */
+        .cal-heatmap-container rect.q0,
+        .cal-heatmap-container .graph-rect:not([fill]),
+        .cal-heatmap-container rect[fill="#ebedf0"],
+        .cal-heatmap-container rect[fill="#ededed"] {
+            fill: #202020 !important;
+            stroke: #191919 !important; /* 노션 검정 배경과 부드러운 경계선 처리 */
         }
     </style>
 </head>
@@ -42,10 +50,10 @@
                 cellPadding: 3,
                 range: 6,
                 tooltip: true,
-                considerMissingDataAsZero: false,
+                considerMissingDataAsZero: true, // 빈 날짜도 데이터값 0으로 처리
                 legend: [1],
                 legendColors: {
-                    min: "#202020", // ⭐ 빈 칸을 눈부시지 않은 더 깊은 회색으로 톤다운
+                    min: "#202020",
                     base: "#202020",
                     colors: ["#84c688"], // 일지 쓴 날 단일 연녹색
                     empty: "#202020"

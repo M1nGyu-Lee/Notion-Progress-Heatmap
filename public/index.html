@@ -16,7 +16,7 @@
             background-color: #191919;
             color: #8b949e;
         }
-        /* ⭐ [핵심] July, June 텍스트가 들어간 커다란 월 상자 배경을 노션 검은색(#191919)으로 지정 */
+        /* 큰 월(Month) 틀 배경은 노션 검은색(#191919)으로 지정 */
         .cal-heatmap-container rect.domain-background,
         .cal-heatmap-container .graph-domain-bg,
         .cal-heatmap-container .ch-domain-bg {
@@ -30,16 +30,20 @@
             color: #8b949e !important;
             font-size: 11px;
         }
-        /* ⭐ 2. [오직 일별 작은 네모칸에만] 세련된 회색(#2d3137) 지정 */
-        .cal-heatmap-container .subdomain-rect,
-        .cal-heatmap-container rect.day,
+        /* ⭐ 2. [오직 안 쓴 빈 작은 네모칸들만] 쨍한 하얀색 차단하고 세련된 회색(#2d3137)으로 지정 */
+        .cal-heatmap-container rect.graph-rect:not(.domain-background),
         .cal-heatmap-container rect.subdomain-rect,
         .cal-heatmap-container rect.q0 {
             fill: #2d3137 !important;
-            stroke: #191919 !important; /* 네모 사이 깔끔한 1px 경계선 */
+            stroke: #191919 !important; /* 사각형 간 1px 검은색 경계선 */
         }
-        /* ⭐ 3. [작성한 날] 예쁜 자연스러운 파스텔 연녹색 (#68b072) */
-        .cal-heatmap-container rect[class*="q"]:not(.q0) {
+        /* ⭐ 3. [작성한 날만] 연녹색(#68b072)으로 선명하게 적용 */
+        .cal-heatmap-container rect[class*="q"]:not(.q0),
+        .cal-heatmap-container rect.q1,
+        .cal-heatmap-container rect.q2,
+        .cal-heatmap-container rect.q3,
+        .cal-heatmap-container rect.q4,
+        .cal-heatmap-container rect.q5 {
             fill: #68b072 !important;
             stroke: #191919 !important;
         }

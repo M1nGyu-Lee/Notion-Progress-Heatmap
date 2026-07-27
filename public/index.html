@@ -12,14 +12,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #191919; /* 노션 다크모드 배경 */
-            color: #8a8a8a; /* 편안한 회색 텍스트 */
+            background-color: #191919; /* 노션 다크모드 검정 배경 */
+            color: #787878; /* 텍스트도 눈이 더 편한 은은한 회색 */
         }
         /* 캘린더 월/일 라벨 텍스트 */
         .cal-heatmap-container .graph-label, 
         .cal-heatmap-container text {
-            fill: #8a8a8a !important;
-            color: #8a8a8a !important;
+            fill: #787878 !important;
+            color: #787878 !important;
             font-size: 11px;
         }
     </style>
@@ -43,12 +43,12 @@
                 range: 6,
                 tooltip: true,
                 considerMissingDataAsZero: false,
-                legend: [1], // 단일 표시 모드 (1 이상이면 연녹색)
+                legend: [1],
                 legendColors: {
-                    min: "#252525", // 일지 안 쓴 날 (어두운 회색)
-                    base: "#252525",
-                    colors: ["#84c688"], // ⭐ 일지 쓴 날 (단일 부드러운 연녹색)
-                    empty: "#252525"
+                    min: "#202020", // ⭐ 빈 칸을 눈부시지 않은 더 깊은 회색으로 톤다운
+                    base: "#202020",
+                    colors: ["#84c688"], // 일지 쓴 날 단일 연녹색
+                    empty: "#202020"
                 },
                 subDomainTitleFormat: {
                     empty: "{date}",

@@ -1,16 +1,28 @@
-<html lang="zh">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>Notion Task Heatmap</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.css" />
     <style>
+        /* 배경색을 노션 다크모드 색상(#191919)으로 지정 (순수 검정은 #000000) */
         body {
-            padding-top: 40px;
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            padding-top: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            background-color: #191919; 
+            color: #ffffff;
+        }
+
+        /* 캘린더 라벨(월/일) 텍스트 밝은 색상 설정 */
+        .cal-heatmap-container .graph-label, 
+        .cal-heatmap-container text {
+            fill: #adbac7 !important;
+            color: #adbac7 !important;
+            font-size: 11px;
         }
     </style>
 </head>
@@ -20,38 +32,34 @@
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const baseUrl = window.location.origin; // 获取当前页面的根URL
-        
+            const baseUrl = window.location.origin;
+
             const cal = new CalHeatMap();
             cal.init({
                 itemSelector: "#cal-heatmap",
                 domain: "month",
                 subDomain: "day",
-                data: baseUrl + "/api/database", // 更新为指向无服务器函数的URL
+                data: baseUrl + "/api/database",
                 start: new Date(new Date().getFullYear(), new Date().getMonth() - 5),
-                cellSize: 10,
+                cellSize: 11,
+                cellPadding: 3,
                 range: 6,
                 tooltip: true,
-                nextSelector: "#next",
-                previousSelector: "#previous",
                 considerMissingDataAsZero: false,
-                legend: [25, 50, 65, 80], // Redefining the legend thresholds
+                legend: [25, 50, 75, 90],
+                // GitHub 다크모드 스타일 잔디 색상 및 어두운 격자 지정
                 legendColors: {
-                    min: "#ebedf0",
-                    base: "#ebedf0",
-                    colors: ["#ebedf0","#c6e48b", "#7bc96f", "#239a3b", "#196127"], // Adjusted color steps for clarity
-                    empty: "#ebedf0"
+                    min: "#21262d",
+                    base: "#21262d",
+                    colors: ["#0e4429", "#006d32", "#26a641", "#39d353"],
+                    empty: "#21262d"
                 },
                 subDomainTitleFormat: {
-                    empty: "{date}", // Display only the date for empty data cells
-                    filled: "{count}% on {date}" // Custom format to show percentage
+                    empty: "{date}",
+                    filled: "{count}% on {date}"
                 },
                 afterLoadData: function(data) {
-                    if (!data) {
-                        console.error('No data received');
-                        return {};
-                    }
-
+                    if (!data) return {};
                     var result = {};
                     data.forEach(function(item) {
                         var date = new Date(item.date).getTime() / 1000;
@@ -60,13 +68,12 @@
                     return result;
                 }
             });
-        
-            // 设置定时器每30秒刷新数据
+
+            // 30초마다 데이터 자동 갱신
             setInterval(function() {
-                cal.update(baseUrl + "/api/database"); // 更新为指向无服务器函数的URL
-            }, 30000); // 每30秒刷新一次
+                cal.update(baseUrl + "/api/database");
+            }, 30000);
         });
     </script>
-            
 </body>
 </html>

@@ -1,56 +1,74 @@
-import fetch from 'node-fetch';
-import dotenv from 'dotenv';
-dotenv.config();
 export default async (req, res) => {
     const token = process.env.ENV_NOTION_TOKEN;
     const databaseId = process.env.ENV_DATABASE_ID;
+    // 1. 환경 변수 체크
+    if (!token || !databaseId) {
+        return res.status(500).json({ 
+            error: "Vercel 환경 변수가 없습니다. ENV_NOTION_TOKEN 및 ENV_DATABASE_ID를 확인하세요." 
+        });
+    }
     try {
-        const response = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+        const fetchFn = globalThis.fetch || (await import('node-fetch')).default;
+        const response = await fetchFn(`https://api.notion.com/v1/databases/${databaseId.trim()}/query`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${token.trim()}`,
                 'Notion-Version': '2022-06-28',
                 'Content-Type': 'application/json'
             },
         });
         const data = await response.json();
+        // 2. Notion API 반환 에러 시 원인 메시지 출력
         if (!response.ok) {
-            throw new Error(`Notion API error: ${response.status} ${JSON.stringify(data)}`);
+            return res.status(response.status).json({ 
+                error: `Notion API Error (${response.status})`, 
+                message: data.message || data 
+            });
         }
-        const processedData = processData(data.results);
+        const processedData = processData(data.results || []);
         res.json(processedData);
     } catch (error) {
         console.error("Error processing request:", error);
         res.status(500).json({ error: error.message });
     }
 };
-const processData = (data) => {
+const processData = (results) => {
     const progressMap = new Map();
-    data.forEach(item => {
-        if (item.properties && item.properties.Date) {
-            let dateStr = null;
-            // 1. 일반 날짜(Date) 속성 지원
-            if (item.properties.Date.date && item.properties.Date.date.start) {
-                dateStr = item.properties.Date.date.start;
-            } 
-            // 2. 생성 일시(Created Time) 속성 지원
-            else if (item.properties.Date.created_time) {
-                dateStr = item.properties.Date.created_time.split('T')[0];
-            }
-            // 3. Progress 값 추출 (숫자 또는 수식 모두 지원)
-            let numVal = 100; // 기본값 100%
-            if (item.properties.Progress) {
-                if (item.properties.Progress.number !== undefined && item.properties.Progress.number !== null) {
-                    numVal = item.properties.Progress.number;
-                } else if (item.properties.Progress.formula && item.properties.Progress.formula.number !== null) {
-                    numVal = item.properties.Progress.formula.number;
+    results.forEach(item => {
+        if (!item || !item.properties) return;
+        let dateStr = null;
+        let numVal = 100; // 기본값 100%
+        // A. 날짜(Date) 속성 자동 탐색 (Date, 날짜, 생성 일시 등 모두 호환)
+        for (const [key, prop] of Object.entries(item.properties)) {
+            if (key.toLowerCase().includes('date') || key.includes('일시') || key.includes('날짜')) {
+                if (prop.date && prop.date.start) {
+                    dateStr = prop.date.start;
+                    break;
+                } else if (prop.created_time) {
+                    dateStr = prop.created_time.split('T')[0];
+                    break;
                 }
             }
-            if (dateStr && numVal > 0) {
-                // 수치가 1 이하 소수인 경우 100을 곱함 (1 -> 100%)
-                const progress = numVal <= 1 ? Math.round(numVal * 100) : Math.round(numVal);
-                progressMap.set(dateStr, progress);
+        }
+        // 만약 속성에서 날짜를 못 찾으면 노션 글 기본 생성 날짜 활용
+        if (!dateStr && item.created_time) {
+            dateStr = item.created_time.split('T')[0];
+        }
+        // B. Progress 속성 자동 탐색 (Progress, 진행률, 수식/숫자 모두 호환)
+        for (const [key, prop] of Object.entries(item.properties)) {
+            if (key.toLowerCase().includes('progress') || key.includes('진행')) {
+                if (prop.number !== undefined && prop.number !== null) {
+                    numVal = prop.number;
+                    break;
+                } else if (prop.formula && prop.formula.number !== null && prop.formula.number !== undefined) {
+                    numVal = prop.formula.number;
+                    break;
+                }
             }
+        }
+        if (dateStr) {
+            const progress = numVal <= 1 ? Math.round(numVal * 100) : Math.round(numVal);
+            progressMap.set(dateStr, progress);
         }
     });
     return Array.from(progressMap).map(([date, progress]) => ({ date, progress }));

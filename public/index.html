@@ -5,7 +5,6 @@
     <title>Notion Task Heatmap</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.css" />
     <style>
-        /* 배경색을 노션 다크모드 색상(#191919)으로 지정 (순수 검정은 #000000) */
         body {
             padding-top: 15px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -13,15 +12,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #191919; 
-            color: #ffffff;
+            background-color: #191919; /* 노션 다크모드 검정 배경 */
+            color: #9b9b9b; /* 쨍하지 않은 차분한 회색 텍스트 */
         }
 
-        /* 캘린더 라벨(월/일) 텍스트 밝은 색상 설정 */
+        /* 캘린더 라벨(월/일) 은은한 회색으로 조절 */
         .cal-heatmap-container .graph-label, 
         .cal-heatmap-container text {
-            fill: #adbac7 !important;
-            color: #adbac7 !important;
+            fill: #8a8a8a !important;
+            color: #8a8a8a !important;
             font-size: 11px;
         }
     </style>
@@ -47,12 +46,12 @@
                 tooltip: true,
                 considerMissingDataAsZero: false,
                 legend: [25, 50, 75, 90],
-                // GitHub 다크모드 스타일 잔디 색상 및 어두운 격자 지정
+                // 부드럽고 연한 연녹색(Soft Light Green) 파스텔 색상 팔레트
                 legendColors: {
-                    min: "#21262d",
-                    base: "#21262d",
-                    colors: ["#0e4429", "#006d32", "#26a641", "#39d353"],
-                    empty: "#21262d"
+                    min: "#252525",  // 빈 격자 (어두운 회색)
+                    base: "#252525",
+                    colors: ["#3b6e4e", "#589c67", "#84c688", "#b8edb5"], // 부드러운 연녹색 단계
+                    empty: "#252525"
                 },
                 subDomainTitleFormat: {
                     empty: "{date}",
@@ -69,7 +68,6 @@
                 }
             });
 
-            // 30초마다 데이터 자동 갱신
             setInterval(function() {
                 cal.update(baseUrl + "/api/database");
             }, 30000);

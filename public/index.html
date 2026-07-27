@@ -5,7 +5,7 @@
     <title>Notion Task Heatmap</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.css" />
     <style>
-        /* 1. 바탕색: 노션 다크모드 검은 화면색 (#191919) */
+        /* 1. 바탕 전체: 노션 다크모드 검은 화면색 (#191919) */
         body {
             padding-top: 15px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -16,6 +16,13 @@
             background-color: #191919;
             color: #8b949e;
         }
+        /* ⭐ [핵심] July, June 텍스트가 들어간 커다란 월 상자 배경을 노션 검은색(#191919)으로 지정 */
+        .cal-heatmap-container rect.domain-background,
+        .cal-heatmap-container .graph-domain-bg,
+        .cal-heatmap-container .ch-domain-bg {
+            fill: #191919 !important;
+            stroke: none !important;
+        }
         /* 캘린더 라벨 텍스트 */
         .cal-heatmap-container .graph-label, 
         .cal-heatmap-container text {
@@ -23,14 +30,15 @@
             color: #8b949e !important;
             font-size: 11px;
         }
-        /* 2. 네모 색깔: 안 쓴 날 & 미래 날짜 포함 네모만 회색(#2d3137)으로 지정 */
-        .cal-heatmap-container rect.q0,
-        .cal-heatmap-container .graph-rect,
-        .cal-heatmap-container rect:not([class*="q"]) {
+        /* ⭐ 2. [오직 일별 작은 네모칸에만] 세련된 회색(#2d3137) 지정 */
+        .cal-heatmap-container .subdomain-rect,
+        .cal-heatmap-container rect.day,
+        .cal-heatmap-container rect.subdomain-rect,
+        .cal-heatmap-container rect.q0 {
             fill: #2d3137 !important;
-            stroke: #191919 !important; /* 노션 검은 바탕과 깔끔하게 구분되는 경계선 */
+            stroke: #191919 !important; /* 네모 사이 깔끔한 1px 경계선 */
         }
-        /* 3. 작성한 날: 절대 덮어씌워지지 않는 자연스러운 파스텔 연녹색(#68b072) */
+        /* ⭐ 3. [작성한 날] 예쁜 자연스러운 파스텔 연녹색 (#68b072) */
         .cal-heatmap-container rect[class*="q"]:not(.q0) {
             fill: #68b072 !important;
             stroke: #191919 !important;

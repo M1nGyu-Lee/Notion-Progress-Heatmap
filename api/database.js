@@ -1,74 +1,82 @@
+const NOTION_VERSION = '2025-09-03';
+
 export default async (req, res) => {
-    const token = process.env.ENV_NOTION_TOKEN;
-    const databaseId = process.env.ENV_DATABASE_ID;
+    const token = process.env.ENV_NOTION_TOKEN?.trim();
+    const databaseId = process.env.ENV_DATABASE_ID?.trim();
     if (!token || !databaseId) {
-        return res.status(500).json({ error: "Missing ENV_NOTION_TOKEN or ENV_DATABASE_ID" });
+        return res.status(500).json({ error: 'Missing ENV_NOTION_TOKEN or ENV_DATABASE_ID' });
     }
     try {
         const fetchFn = globalThis.fetch || (await import('node-fetch')).default;
-        
-        // Notion Search API를 사용하여 다중 소스 데이터베이스 호환 처리
-        const response = await fetchFn(`https://api.notion.com/v1/search`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token.trim()}`,
-                'Notion-Version': '2022-06-28',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                filter: { value: 'page', property: 'object' },
-                sort: { direction: 'descending', timestamp: 'last_edited_time' }
-            })
-        });
-        
-        const data = await response.json();
-        if (!response.ok) {
-            return res.status(response.status).json({ 
-                error: `Notion API Error (${response.status})`, 
-                message: data.message || data 
+        const notion = async (path, body) => {
+            const response = await fetchFn(`https://api.notion.com/v1/${path}`, {
+                method: body ? 'POST' : 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Notion-Version': NOTION_VERSION,
+                    'Content-Type': 'application/json'
+                },
+                ...(body ? { body: JSON.stringify(body) } : {})
             });
+            const data = await response.json();
+            if (!response.ok) {
+                const error = new Error(data.message || `Notion API Error (${response.status})`);
+                error.status = response.status;
+                throw error;
+            }
+            return data;
+        };
+        // Workspace search includes unrelated pages; query only the configured DB.
+        const database = await notion(`databases/${encodeURIComponent(databaseId)}`);
+        if (!database.data_sources?.length) {
+            throw new Error('No data sources found. ENV_DATABASE_ID must identify the original Notion database.');
         }
-        const processedData = processData(data.results || []);
-        res.json(processedData);
+        const results = [];
+        for (const source of database.data_sources) {
+            let cursor;
+            do {
+                const data = await notion(`data_sources/${encodeURIComponent(source.id)}/query`, {
+                    page_size: 100,
+                    ...(cursor ? { start_cursor: cursor } : {})
+                });
+                results.push(...(data.results || []));
+                if (data.has_more && (!data.next_cursor || data.next_cursor === cursor)) {
+                    throw new Error('Notion returned an invalid pagination cursor.');
+                }
+                cursor = data.has_more ? data.next_cursor : null;
+            } while (cursor);
+        }
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json(processData(results));
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return res.status(error.status || 500).json({ error: error.message });
     }
 };
-const processData = (results) => {
+
+export const processData = (results) => {
     const progressMap = new Map();
-    results.forEach(item => {
-        if (!item || !item.properties) return;
-        let dateStr = null;
-        let numVal = 100;
-        for (const [key, prop] of Object.entries(item.properties)) {
-            if (key.toLowerCase().includes('date') || key.includes('일시') || key.includes('날짜')) {
-                if (prop.date && prop.date.start) {
-                    dateStr = prop.date.start;
-                    break;
-                } else if (prop.created_time) {
-                    dateStr = prop.created_time.split('T')[0];
-                    break;
-                }
-            }
-        }
-        if (!dateStr && item.created_time) {
-            dateStr = item.created_time.split('T')[0];
-        }
-        for (const [key, prop] of Object.entries(item.properties)) {
-            if (key.toLowerCase().includes('progress') || key.includes('진행')) {
-                if (prop.number !== undefined && prop.number !== null) {
-                    numVal = prop.number;
-                    break;
-                } else if (prop.formula && prop.formula.number !== null && prop.formula.number !== undefined) {
-                    numVal = prop.formula.number;
-                    break;
-                }
-            }
-        }
-        if (dateStr) {
-            const progress = numVal <= 1 ? Math.round(numVal * 100) : Math.round(numVal);
-            progressMap.set(dateStr, progress);
-        }
+    const koreanDate = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
     });
-    return Array.from(progressMap).map(([date, progress]) => ({ date, progress }));
+    for (const item of results) {
+        if (!item || item.archived || item.in_trash) continue;
+        // Date is authoritative. Missing Date must never use created_time.
+        const start = item.properties?.Date?.date?.start;
+        if (typeof start !== 'string') continue;
+        const parsed = new Date(start);
+        if (!Number.isFinite(parsed.getTime())) continue;
+        const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(start);
+        if (dateOnly && parsed.toISOString().slice(0, 10) !== start) continue;
+        const date = dateOnly ? start : koreanDate.format(parsed);
+        const properties = item.properties;
+        const progressProperty = properties.Progress || Object.entries(properties)
+            .find(([key]) => key.toLowerCase().includes('progress') || key.includes('진행'))?.[1];
+        const value = progressProperty?.number ?? progressProperty?.formula?.number ?? 100;
+        const progress = Number.isFinite(value)
+            ? Math.max(0, Math.min(100, Math.round(value <= 1 ? value * 100 : value)))
+            : 100;
+        progressMap.set(date, Math.max(progressMap.get(date) ?? 0, progress));
+    }
+    return [...progressMap].sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, progress]) => ({ date, progress }));
 };

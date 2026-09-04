@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Notion Task Heatmap</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@3.6.2/cal-heatmap.css" />
     <style>
         /* 1. 바탕 전체: 노션 다크모드 검은 화면색 (#191919) */
         body {
@@ -51,8 +51,8 @@
 </head>
 <body>
     <div id="cal-heatmap"></div>
-    <script src="https://cdn.jsdelivr.net/npm/d3@3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@3.5.17/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@3.6.2/cal-heatmap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const baseUrl = window.location.origin;
@@ -83,7 +83,9 @@
                     if (!data) return {};
                     var result = {};
                     data.forEach(function(item) {
-                        var date = new Date(item.date).getTime() / 1000;
+                        // Keep the lesson calendar date in every viewer timezone.
+                        var parts = item.date.split('-').map(Number);
+                        var date = new Date(parts[0], parts[1] - 1, parts[2]).getTime() / 1000;
                         result[date] = item.progress;
                     });
                     return result;

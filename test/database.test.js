@@ -43,6 +43,34 @@ test('duplicates keep maximum progress; zero, missing and formula values work', 
     ]);
 });
 
+test('combined lessons include each day of Date range and merge overlaps', () => {
+    const combined = page('2026-08-12', 0.5);
+    combined.properties.Date.date.end = '2026-08-14';
+    assert.deepEqual(processData([combined, page('2026-08-13')]), [
+        { date: '2026-08-12', progress: 50 },
+        { date: '2026-08-13', progress: 100 },
+        { date: '2026-08-14', progress: 50 }
+    ]);
+});
+
+test('range endpoints use Seoul dates and cross month boundaries', () => {
+    const combined = page('2026-08-30T16:00:00Z');
+    combined.properties.Date.date.end = '2026-09-01T16:00:00Z';
+    assert.deepEqual(processData([combined]), [
+        { date: '2026-08-31', progress: 100 },
+        { date: '2026-09-01', progress: 100 },
+        { date: '2026-09-02', progress: 100 }
+    ]);
+});
+
+test('invalid or reversed range ends keep only the valid start', () => {
+    for (const end of [null, 'invalid', '2026-02-30', '2026-08-11', '2026-08-12']) {
+        const combined = page('2026-08-12');
+        combined.properties.Date.date.end = end;
+        assert.deepEqual(processData([combined]), [{ date: '2026-08-12', progress: 100 }]);
+    }
+});
+
 test('handler scopes queries to configured DB, following pagination across sources', async (t) => {
     const oldToken = process.env.ENV_NOTION_TOKEN;
     const oldDatabase = process.env.ENV_DATABASE_ID;

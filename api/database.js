@@ -58,16 +58,22 @@ export const processData = (results) => {
     const koreanDate = new Intl.DateTimeFormat('sv-SE', {
         timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
     });
+    const calendarDate = (value) => {
+        if (typeof value !== 'string') return null;
+        const parsed = new Date(value);
+        if (!Number.isFinite(parsed.getTime())) return null;
+        const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+        if (dateOnly && parsed.toISOString().slice(0, 10) !== value) return null;
+        return dateOnly ? value : koreanDate.format(parsed);
+    };
     for (const item of results) {
         if (!item || item.archived || item.in_trash) continue;
         // Date is authoritative. Missing Date must never use created_time.
-        const start = item.properties?.Date?.date?.start;
-        if (typeof start !== 'string') continue;
-        const parsed = new Date(start);
-        if (!Number.isFinite(parsed.getTime())) continue;
-        const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(start);
-        if (dateOnly && parsed.toISOString().slice(0, 10) !== start) continue;
-        const date = dateOnly ? start : koreanDate.format(parsed);
+        const dateProperty = item.properties?.Date?.date;
+        const date = calendarDate(dateProperty?.start);
+        if (!date) continue;
+        const end = calendarDate(dateProperty?.end);
+        const lastDate = end && end >= date ? end : date;
         const properties = item.properties;
         const progressProperty = properties.Progress || Object.entries(properties)
             .find(([key]) => key.toLowerCase().includes('progress') || key.includes('진행'))?.[1];
@@ -75,7 +81,13 @@ export const processData = (results) => {
         const progress = Number.isFinite(value)
             ? Math.max(0, Math.min(100, Math.round(value <= 1 ? value * 100 : value)))
             : 100;
-        progressMap.set(date, Math.max(progressMap.get(date) ?? 0, progress));
+        // Notion ranges include both endpoints. UTC arithmetic keeps calendar
+        // iteration independent of the server timezone and daylight saving.
+        const lastDay = Date.parse(lastDate);
+        for (let day = Date.parse(date); day <= lastDay; day += 86400000) {
+            const key = new Date(day).toISOString().slice(0, 10);
+            progressMap.set(key, Math.max(progressMap.get(key) ?? 0, progress));
+        }
     }
     return [...progressMap].sort(([a], [b]) => a.localeCompare(b))
         .map(([date, progress]) => ({ date, progress }));

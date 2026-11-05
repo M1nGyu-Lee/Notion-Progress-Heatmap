@@ -71,6 +71,62 @@ test('invalid or reversed range ends keep only the valid start', () => {
     }
 });
 
+const titledPage = (title, date, progress) => {
+    const item = page(date, progress);
+    item.properties['제목'] = { type: 'title', title: [{ plain_text: title }] };
+    return item;
+};
+
+test('DAY 33~45 paints exactly thirteen weekdays from the first lesson date', () => {
+    const result = processData([titledPage('[DAY 33~45] AWS', '2026-11-05')]);
+    assert.deepEqual(result.map(item => item.date), [
+        '2026-11-05', '2026-11-06', '2026-11-09', '2026-11-10', '2026-11-11',
+        '2026-11-12', '2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18',
+        '2026-11-19', '2026-11-20', '2026-11-23'
+    ]);
+    assert.ok(result.every(item => item.progress === 100));
+});
+
+test('DAY range accepts spacing, rich-text fragments, fullwidth and dash variants', () => {
+    for (const title of ['[DAY33~45]', 'DAY 33 ~ DAY 45', '[day33–45]', '[DAY 33～45]', '[ＤＡＹ ３３〜４５]', '[DAY33-45]']) {
+        const item = titledPage(title, '2026-11-05', 0.5);
+        const middle = Math.floor(title.length / 2);
+        item.properties['제목'].title = [
+            { text: { content: title.slice(0, middle) } },
+            { plain_text: title.slice(middle) }
+        ];
+        const result = processData([item]);
+        assert.equal(result.length, 13, title);
+        assert.equal(result.at(-1).date, '2026-11-23', title);
+        assert.ok(result.every(row => row.progress === 50));
+    }
+});
+
+test('range uses Seoul start date, skips weekend starts, and takes precedence over Date.end', () => {
+    const item = titledPage('[DAY 1~3]', '2026-10-30T16:00:00Z'); // Saturday in Seoul
+    item.properties.Date.date.end = '2026-12-31';
+    assert.deepEqual(processData([item]).map(row => row.date), ['2026-11-02', '2026-11-03', '2026-11-04']);
+});
+
+test('DAY range crosses year boundary, counts weekday holidays, and merges overlaps', () => {
+    assert.deepEqual(processData([
+        titledPage('[DAY 8~10]', '2026-12-31', 0.5),
+        titledPage('[DAY 9]', '2027-01-01', 1)
+    ]), [
+        { date: '2026-12-31', progress: 50 },
+        { date: '2027-01-01', progress: 100 },
+        { date: '2027-01-04', progress: 50 }
+    ]);
+});
+
+test('invalid ranges, missing dates, and unrelated numbers do not invent days', () => {
+    for (const title of ['[DAY 45~33]', '[DAY 0~3]', '[DAY 33]', '프로젝트 33~45', '[DAY 1~10000]']) {
+        assert.deepEqual(processData([titledPage(title, '2026-11-05')]), [{ date: '2026-11-05', progress: 100 }]);
+    }
+    assert.deepEqual(processData([titledPage('[DAY 33~45]', null)]), []);
+    assert.deepEqual(processData([{ ...titledPage('[DAY 33~45]', '2026-11-05'), archived: true }]), []);
+});
+
 test('handler scopes queries to configured DB, following pagination across sources', async (t) => {
     const oldToken = process.env.ENV_NOTION_TOKEN;
     const oldDatabase = process.env.ENV_DATABASE_ID;

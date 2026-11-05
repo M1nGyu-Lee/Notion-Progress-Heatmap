@@ -75,18 +75,33 @@ export const processData = (results) => {
         const end = calendarDate(dateProperty?.end);
         const lastDate = end && end >= date ? end : date;
         const properties = item.properties;
+        // The first DAY is anchored to Date.start; the title supplies a count,
+        // never an inferred calendar start. Read any native title property.
+        const titleProperty = Object.values(properties).find(property => Array.isArray(property?.title));
+        const title = (titleProperty?.title || [])
+            .map(part => part.plain_text ?? part.text?.content ?? '').join('').normalize('NFKC');
+        const dayRange = /\bDAY\s*(\d{1,4})\s*[~〜～–—-]\s*(?:DAY\s*)?(\d{1,4})(?!\d)/i.exec(title);
+        const firstLesson = Number(dayRange?.[1]);
+        const lastLesson = Number(dayRange?.[2]);
+        const lessonCount = firstLesson > 0 && lastLesson >= firstLesson
+            ? lastLesson - firstLesson + 1 : null;
         const progressProperty = properties.Progress || Object.entries(properties)
             .find(([key]) => key.toLowerCase().includes('progress') || key.includes('진행'))?.[1];
         const value = progressProperty?.number ?? progressProperty?.formula?.number ?? 100;
         const progress = Number.isFinite(value)
             ? Math.max(0, Math.min(100, Math.round(value <= 1 ? value * 100 : value)))
             : 100;
-        // Notion ranges include both endpoints. UTC arithmetic keeps calendar
-        // iteration independent of the server timezone and daylight saving.
+        // DAY ranges take precedence over Date.end and count weekdays only.
+        // Untitled explicit Date ranges retain their existing inclusive behavior.
+        // UTC arithmetic keeps both paths independent of the server timezone.
         const lastDay = Date.parse(lastDate);
-        for (let day = Date.parse(date); day <= lastDay; day += 86400000) {
-            const key = new Date(day).toISOString().slice(0, 10);
+        let lessons = 0;
+        for (let day = Date.parse(date); lessonCount ? lessons < lessonCount : day <= lastDay; day += 86400000) {
+            const current = new Date(day);
+            if (lessonCount && (current.getUTCDay() === 0 || current.getUTCDay() === 6)) continue;
+            const key = current.toISOString().slice(0, 10);
             progressMap.set(key, Math.max(progressMap.get(key) ?? 0, progress));
+            lessons += 1;
         }
     }
     return [...progressMap].sort(([a], [b]) => a.localeCompare(b))
